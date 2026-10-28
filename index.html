@@ -320,7 +320,7 @@ body{
   </div>
   <div class="controls">
     <button id="spinBtn" class="spin-btn" onclick="spin()">SPIN</button>
-    <div id="spinCount" class="spin-count">Spin 1 of 6</div>
+    <div id="spinCount" class="spin-count">Spin 1 of 8</div>
   </div>
   <div id="slotWrap" class="slot-wrap hidden">
     <div class="slot-label">Selected Delegate</div>
@@ -337,13 +337,16 @@ body{
 
 <script>
 const SEGS=[
-  {label:'Telescreen',       lines:['Telescreen'],          color:'#F0B420'},
-  {label:'Open Days',        lines:['Open Days'],           color:'#8FA0AA'},
-  {label:'Informal Chat',    lines:['Informal','Chat'],     color:'#E87618'},
-  {label:'Interview',        lines:['Interview'],           color:'#4272C0'},
-  {label:'Assessment Centre',lines:['Assessment','Centre'], color:'#50B040'},
-  {label:'Presentation',     lines:['Presentation'],        color:'#7AB8D8'},
+  {label:'Telescreen',          lines:['Telescreen'],            color:'#F0B420'},
+  {label:'Open Days',           lines:['Open','Days'],           color:'#8FA0AA'},
+  {label:'Informal Chat',       lines:['Informal','Chat'],       color:'#E87618'},
+  {label:'Interview',           lines:['Interview'],             color:'#4272C0'},
+  {label:'Assessment Centre',   lines:['Assessment','Centre'],   color:'#50B040'},
+  {label:'Presentation',        lines:['Presentation'],          color:'#7AB8D8'},
+  {label:'In Tray Exercise',    lines:['In Tray','Exercise'],    color:'#8A5CC2'},
+  {label:'Practical Assessment',lines:['Practical','Assessment'],color:'#D84A6A'},
 ];
+const N=SEGS.length, SEG=360/N;
 const CX=200,CY=200,R=190;
 
 let delegates=[],spinOrder=[],nameOrder=[];
@@ -399,7 +402,7 @@ function playStopSound(){
 function toRad(deg){return(deg-90)*Math.PI/180}
 
 function segPath(i){
-  const a1=toRad(i*60),a2=toRad((i+1)*60);
+  const a1=toRad(i*SEG),a2=toRad((i+1)*SEG);
   const x1=CX+R*Math.cos(a1),y1=CY+R*Math.sin(a1);
   const x2=CX+R*Math.cos(a2),y2=CY+R*Math.sin(a2);
   return `M${CX},${CY} L${x1.toFixed(2)},${y1.toFixed(2)} A${R},${R},0,0,1,${x2.toFixed(2)},${y2.toFixed(2)} Z`;
@@ -411,14 +414,14 @@ function drawWheel(){
   SEGS.forEach((s,i)=>{
     h+=`<path id="seg${i}" d="${segPath(i)}" fill="${s.color}" stroke="#001020" stroke-width="2.5"/>`;
   });
-  for(let i=0;i<6;i++){
-    const a=toRad(i*60);
+  for(let i=0;i<N;i++){
+    const a=toRad(i*SEG);
     h+=`<line x1="${CX}" y1="${CY}" x2="${(CX+R*Math.cos(a)).toFixed(2)}" y2="${(CY+R*Math.sin(a)).toFixed(2)}" stroke="#001020" stroke-width="2.5"/>`;
   }
   SEGS.forEach((s,i)=>{
-    const mid=i*60+30,mRad=toRad(mid),tr=R*0.61;
+    const mid=i*SEG+SEG/2,mRad=toRad(mid),tr=R*0.64;
     const tx=(CX+tr*Math.cos(mRad)).toFixed(2),ty=(CY+tr*Math.sin(mRad)).toFixed(2);
-    const fs=s.lines.length>1?14.5:17.5,lh=19;
+    const fs=s.lines.length>1?12.5:13,lh=15;
     h+=`<g transform="rotate(${mid},${tx},${ty})">`;
     if(s.lines.length===1){
       h+=`<text x="${tx}" y="${ty}" text-anchor="middle" dominant-baseline="middle"
@@ -500,12 +503,12 @@ function buildNameOrder(dels,n){
 }
 
 function startGame(){
-  spinOrder=shuffle([0,1,2,3,4,5]);
-  nameOrder=buildNameOrder(delegates,6);
+  spinOrder=shuffle([...Array(N).keys()]);
+  nameOrder=buildNameOrder(delegates,N);
   spinIdx=0;totalRot=0;spinning=false;
   const svg=document.getElementById('wheelSvg');
   svg.style.transition='none';svg.style.transform='rotate(0deg)';
-  for(let i=0;i<6;i++){const el=document.getElementById('seg'+i);if(el){el.style.transition='';el.style.filter='';}}
+  for(let i=0;i<N;i++){const el=document.getElementById('seg'+i);if(el){el.style.transition='';el.style.filter='';}}
   document.getElementById('spinBtn').disabled=false;
   document.getElementById('slotWrap').classList.add('hidden');
   document.getElementById('resetBtn').classList.add('hidden');
@@ -552,7 +555,7 @@ function handleReady(){
 }
 
 function spin(){
-  if(spinning||spinIdx>=6)return;
+  if(spinning||spinIdx>=N)return;
   spinning=true;
   const ctx=ac(); if(ctx.state==='suspended') ctx.resume();
   const btn=document.getElementById('spinBtn');
@@ -560,10 +563,11 @@ function spin(){
   document.getElementById('slotWrap').classList.add('hidden');
 
   const target=spinOrder[spinIdx];
-  const segAngle=target*60+30;
+  const segAngle=target*SEG+SEG/2;
+  const goal=(360-segAngle)%360;
   const norm=((totalRot%360)+360)%360;
-  let extra=(segAngle-norm+360)%360;
-  if(extra<30)extra+=360;
+  let extra=(goal-norm+360)%360;
+  if(extra<SEG/2)extra+=360;
   const newRot=totalRot+1440+extra;
 
   playSpinSound();
@@ -586,7 +590,7 @@ function spin(){
 
   function advance(){
     spinIdx++;updateCounter();spinning=false;
-    if(spinIdx<6){btn.disabled=false;}
+    if(spinIdx<N){btn.disabled=false;}
     else{
       const rb=document.getElementById('resetBtn');
       rb.classList.remove('hidden');rb.classList.add('pop-in');
@@ -602,7 +606,7 @@ function flashSegment(i){
 }
 
 function updateCounter(){
-  document.getElementById('spinCount').textContent=spinIdx>=6?'All 6 Spins Complete!':`Spin ${spinIdx+1} of 6`;
+  document.getElementById('spinCount').textContent=spinIdx>=N?`All ${N} Spins Complete!`:`Spin ${spinIdx+1} of ${N}`;
 }
 
 function playSlotTicks(){
